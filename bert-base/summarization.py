@@ -49,3 +49,28 @@ trainer = Seq2SeqTrainer(model=bert2bert,
 trainer.train()
 #save model checkpoint
 bert2bert.save_pretrained("bert2bert_summarization")
+
+#evaluation
+def generate_summary(batch):
+  inputs = tokenizer(batch["input"], padding="max_length", truncation=True, max_length=512, return_tensors="pt")
+  input_ids = inputs.input_ids.to("cuda")
+  attention_mask = inputs.attention_mask.to("cuda")
+  outputs = bert2bert.generate(input_ids, attention_mask=attention_mask)
+  output_str = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+  batch["pred_summary"] = output_str
+  return batch
+
+batch_size = 16 # change to 64 for full evaluation
+results = tokenized_datasets['test'].map(generate_summary, batched=True, batch_size=batch_size, remove_columns=["input"])
+
+#get rouge scores
+print("Rouge Scores : \n", rouge.compute(predictions=results["pred_summary"],
+                                         references=results["target"], rouge_types=["rouge2"])["rouge2"].mid)
+
+#get cider scores
+cider = calculate_cider_scores(results["target"], results["pred_summary"])
+print("Cider Scores : \n", cider)
+
+#get bleu scores
+bleu = calculate_bleu_scores(results["target"], results["pred_summary"])
+print("Bleu Scores : \n", bleu)
