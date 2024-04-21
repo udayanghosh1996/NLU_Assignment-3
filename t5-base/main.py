@@ -48,7 +48,7 @@ if task == "translation" :
     
 elif task == "summarization" :
     prefix = "summarize: "
-    max_input_length = 1024
+    max_input_length = 400
     max_target_length = 128
 
 
