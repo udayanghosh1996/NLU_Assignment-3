@@ -1,5 +1,9 @@
 import datasets
 from transformers import AutoTokenizer
+import nltk
+from nltk.translate.bleu_score import corpus_bleu
+from nltk.translate.bleu_score import SmoothingFunction
+from pycocoevalcap.cider.cider import Cider
 
 tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-en-hi")
 rouge = datasets.load_metric("rouge")
@@ -30,3 +34,17 @@ def compute_metrics(pred):
   return {"rouge2_precision": round(rouge_output.precision, 4),
       "rouge2_recall": round(rouge_output.recall, 4),
       "rouge2_fmeasure": round(rouge_output.fmeasure, 4)}
+
+def calculate_cider_scores(actual, generated):
+  act_dict = {idx: [line] for idx, line in enumerate(actual)}
+  gen_dict = {idx: [line] for idx, line in enumerate(generated)}
+  cider = Cider()
+  (score, scores) = cider.compute_score(act_dict, gen_dict)
+  return score
+
+def calculate_bleu_scores(actual, generated):
+  smoothie = SmoothingFunction().method4
+  actual_tokenized = [[nltk.word_tokenize(act) for act in group] for group in actual]
+  generated_tokenized = [nltk.word_tokenize(gen) for gen in generated]
+  score = corpus_bleu(actual_tokenized, generated_tokenized, smoothing_function=smoothie)
+  return score
