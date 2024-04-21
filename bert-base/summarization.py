@@ -1,5 +1,8 @@
+from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer
+import datasets
 from get_dataset import *
 from utils import *
+from model import *
 
 #taking first 10,000 datapoints for training.
 sample_size = 10000
@@ -24,3 +27,25 @@ tokenized_datasets.set_format(type="torch",
 
 print("final datasets (train, test, valid sets) : ", tokenized_datasets)
 
+training_args = Seq2SeqTrainingArguments( predict_with_generate=True,
+                                          evaluation_strategy="steps",
+                                          per_device_train_batch_size=batch_size,
+                                          per_device_eval_batch_size=batch_size,
+                                          fp16=True, #fro GPU, False for CPU
+                                          output_dir="./",
+                                          logging_steps=2,
+                                          save_steps=10,
+                                          eval_steps=4)
+
+rouge = datasets.load_metric("rouge")
+# instantiate trainer
+trainer = Seq2SeqTrainer(model=bert2bert,
+                        args=training_args,
+                        compute_metrics=compute_metrics,
+                        train_dataset=tokenized_datasets['train'],
+                        eval_dataset=tokenized_datasets['valid'])
+
+#training summarization model
+trainer.train()
+#save model checkpoint
+bert2bert.save_pretrained("bert2bert_summarization")
